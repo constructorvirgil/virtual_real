@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using System.Net;
 using System.Net.Sockets;
@@ -8,16 +8,17 @@ namespace UnityClientA
     class ProAnalyser
     {
         const byte START = 0x0e;
-        const UInt16 OP_VERIFY = 0x0000;
-        const UInt16 OP_SET = 0x0100;
-        const UInt16 OP_RESET = 0x0101;
-        const UInt16 OP_UPDATEIO = 0x0102;
-        const UInt16 OP_QUERY = 0x0202;
+        const UInt16 OPS_VERIFY = 0x0000;
+        const UInt16 OPS_SET = 0x0100;
+        const UInt16 OPS_RESET = 0x0101;
+        const UInt16 OPS_QUERY = 0x0102;
+        const UInt16 OPR_QUERY = 0x0200;
         const byte TYPE_UNITY = 0x00;
         const byte TYPE_STM = 0x01;
         const byte LEN_VERIFY = 0x02;
         const byte LEN_NORMAL = 0x0c;
-        const byte INDEX = 0x00;
+        const byte LEN_QUERY = 0x02;
+        const byte MYINDEX = 0x00;
 
         public byte start;
         public UInt16 op;
@@ -42,7 +43,7 @@ namespace UnityClientA
             op |= t_buf[2];
             len = t_buf[3];
 
-            if (op == OP_QUERY)
+            if (op == OPR_QUERY)
             {
                 from = t_buf[4];
                 to = t_buf[5];
@@ -62,18 +63,18 @@ namespace UnityClientA
         public int OpVerifyInit()
         {
             this.start = START;
-            this.op = OP_VERIFY;
+            this.op = OPS_VERIFY;
             this.len = LEN_VERIFY;
             this.type = TYPE_UNITY;
-            this.index = INDEX;
+            this.index = MYINDEX;
             return 0;
         }
         public int OpSetInit(byte[] io, int wcStm)
         {
             this.start = START;
-            this.op = OP_SET;
+            this.op = OPS_SET;
             this.len = LEN_NORMAL;
-            this.from = INDEX;
+            this.from = MYINDEX;
             this.to = (byte)wcStm;
             this.io = io;
             return 0;
@@ -81,26 +82,26 @@ namespace UnityClientA
         public int OpResetInit(byte[] io, int wcStm)
         {
             this.start = START;
-            this.op = OP_RESET;
+            this.op = OPS_RESET;
             this.len = LEN_NORMAL;
-            this.from = INDEX;
+            this.from = MYINDEX;
             this.to = (byte)wcStm;
             this.io = io;
             return 0;
         }
 
-        public int OpUpdateIO(int wcStm)
+        public int OpQueryInit(int wcStm)
         {
             this.start = START;
-            this.op = OP_UPDATEIO;
-            this.len = LEN_NORMAL;
-            this.from = INDEX;
+            this.op = OPS_QUERY;
+            this.len = LEN_QUERY;
+            this.from = MYINDEX;
             this.to = (byte)wcStm;
             return 0;
         }
         public byte[] Encode()
         {
-            if (this.op == OP_VERIFY)
+            if (this.op == OPS_VERIFY)
             {
                 byte[] buf = new byte[8];
                 buf[0] = this.start;
@@ -114,7 +115,7 @@ namespace UnityClientA
                 buf[7] = (byte)(check & ((ushort)(0x00FF)));
                 return buf;
             }
-            else if (this.op == OP_SET)//set
+            else if (this.op == OPS_SET)
             {
                 byte[] buf = new byte[18];
                 buf[0] = this.start;
@@ -133,7 +134,7 @@ namespace UnityClientA
                 buf[6 + i + 1] = (byte)(check & ((ushort)(0x00FF)));
                 return buf;
             }
-            else if (this.op == OP_RESET)
+            else if (this.op == OPS_RESET)
             {
                 byte[] buf = new byte[18];
                 buf[0] = this.start;
@@ -152,7 +153,7 @@ namespace UnityClientA
                 buf[6 + i + 1] = (byte)(check & ((ushort)(0x00FF)));
                 return buf;
             }
-            else if (this.op == OP_UPDATEIO)
+            else if (this.op == OPR_QUERY)
             {
                 byte[] buf = new byte[18];
                 buf[0] = this.start;
@@ -344,7 +345,7 @@ namespace UnityClientA
         public byte[] GetBits(int wcStm)
         {
             ProAnalyser proAnalyserSend = new ProAnalyser();
-            proAnalyserSend.OpUpdateIO(wcStm);
+            proAnalyserSend.OpQueryInit(wcStm);
             try
             {
                 lisSock.Send(proAnalyserSend.Encode());
